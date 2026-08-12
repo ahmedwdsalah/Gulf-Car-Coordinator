@@ -1,24 +1,124 @@
 {
   "expo": {
-    "name": "golfgps",
-    "slug": "golfgps",
+    "name": "Gulf Car Coordinator",
+    "slug": "gulf-car-coordinator",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
+    "scheme": "golfgps",
+    "owner": "ahmedsalah998",
+    "userInterfaceStyle": "dark",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.golfcars.gps",
+      "icon": {
+        "light": "./assets/icon.png",
+        "dark": "./assets/icon.png",
+        "tinted": "./assets/logo.png"
+      },
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false,
+        "CFBundleAllowMixedLocalizations": true
+      }
     },
     "android": {
+      "predictiveBackGestureEnabled": false,
+      "package": "com.golfcars.gps",
+      "icon": "./assets/icon.png",
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#FFFFFF",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
-      }
+      },
+      "permissions": [
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
+    },
+    "locales": {
+      "ar": "./languages/arabic.json"
+    },
+    "experiments": {
+      "typedRoutes": true
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-localization",
+        {
+          "supportedLocales": {
+            "ios": ["en", "ar"],
+            "android": ["en", "ar"]
+          }
+        }
+      ],
+      [
+        "react-native-maps",
+        {
+          "androidGoogleMapsApiKey": "process.env.GOOGLE_MAPS_API_KEY",
+          "iosGoogleMapsApiKey": "process.env.GOOGLE_MAPS_API_KEY"
+        }
+      ],
+      "expo-image",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#1A1612",
+          "image": "./assets/logo.png",
+          "imageWidth": 180
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Allow $(PRODUCT_NAME) to access your location while using the app.",
+          "locationAlwaysAndWhenInUsePermission": "Allow $(PRODUCT_NAME) to access your location in the background for live fleet tracking.",
+          "isIosBackgroundLocationEnabled": true,
+          "isAndroidBackgroundLocationEnabled": true,
+          "isAndroidForegroundServiceEnabled": true,
+          "androidForegroundServiceIcon": "./assets/logo.png"
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/logo.png",
+          "color": "#FFFFFF",
+          "defaultChannel": "default",
+          "enableBackgroundRemoteNotifications": true
+        }
+      ],
+      [
+        "expo-widgets",
+        {
+          "enablePushNotifications": true,
+          "widgets": [
+            {
+              "name": "DriverTracking",
+              "displayName": "Driver Tracking",
+              "description": "Live driver position and trip status",
+              "supportedFamilies": [
+                "accessoryCircular",
+                "accessoryRectangular",
+                "accessoryInline",
+                "systemSmall",
+                "systemMedium"
+              ]
+            }
+          ]
+        }
+      ],
+      "expo-localization"
+    ],
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "589aaf84-683c-4cae-8073-6193e8f1d573"
+      }
     }
   }
 }
