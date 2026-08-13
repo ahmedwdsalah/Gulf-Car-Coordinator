@@ -1,20 +1,20 @@
 {
   "expo": {
-    "name": "Gulf Car Coordinator",
+    "name": "Driver",
     "slug": "gulf-car-coordinator",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/icon-light.png",
     "scheme": "golfgps",
     "owner": "ahmedsalah998",
-    "userInterfaceStyle": "dark",
+    "userInterfaceStyle": "light",
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.golfcars.gps",
       "icon": {
-        "light": "./assets/icon.png",
-        "dark": "./assets/icon.png",
-        "tinted": "./assets/logo.png"
+        "light": "./assets/icon-light.png",
+        "dark": "./assets/icon-dark.png",
+        "tinted": "./assets/tinted-light.png"
       },
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
@@ -95,6 +95,8 @@
       [
         "expo-widgets",
         {
+          "bundleIdentifier": "com.golfcars.gps.ExpoWidgetsTarget",
+          "groupIdentifier": "group.com.golfcars.gps",
           "enablePushNotifications": true,
           "widgets": [
             {
@@ -111,8 +113,7 @@
             }
           ]
         }
-      ],
-      "expo-localization"
+      ]
     ],
     "extra": {
       "router": {},

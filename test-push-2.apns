@@ -1,0 +1,10 @@
+{
+  "Simulator Target Bundle": "com.golfcars.gps",
+  "aps": {
+    "alert": {
+      "title": "✅ انتهت الرحلة",
+      "body": "رحلة رقم 42 مكتملة — عُد إلى نقطة الانطلاق"
+    },
+    "sound": "default"
+  }
+}

@@ -1,8 +1,7 @@
-import { Color } from 'expo-router';
 import { View, Text } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-const c = Color.android.dynamic;
+import { c } from '../lib/colors';
 
 export default function SheetFooter() {
   return (

@@ -1,0 +1,10 @@
+{
+  "Simulator Target Bundle": "com.golfcars.gps",
+  "aps": {
+    "alert": {
+      "title": "🚗 رحلة جديدة",
+      "body": "من الفندق إلى ملعب النادي — اضغط لقبول الرحلة"
+    },
+    "sound": "default"
+  }
+}
