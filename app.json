@@ -3,9 +3,15 @@
     "name": "Driver",
     "slug": "gulf-car-coordinator",
     "version": "1.0.0",
+    "runtimeVersion": {
+      "policy": "fingerprint"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/589aaf84-683c-4cae-8073-6193e8f1d573"
+    },
     "orientation": "portrait",
     "icon": "./assets/icon-light.png",
-    "scheme": "golfgps",
+    "scheme": "gulfcar",
     "owner": "ahmedsalah998",
     "userInterfaceStyle": "light",
     "ios": {
@@ -61,6 +67,13 @@
         {
           "androidGoogleMapsApiKey": "process.env.GOOGLE_MAPS_API_KEY",
           "iosGoogleMapsApiKey": "process.env.GOOGLE_MAPS_API_KEY"
+        }
+      ],
+      "expo-secure-store",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow $(PRODUCT_NAME) to scan provisioning QR codes."
         }
       ],
       "expo-image",

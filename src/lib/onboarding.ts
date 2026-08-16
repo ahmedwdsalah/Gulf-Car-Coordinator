@@ -3,6 +3,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 import { reloadAppAsync } from 'expo';
 import { I18nManager, Platform } from 'react-native';
 import { setAppLanguage } from './i18n';
+import { hasStoredSession } from './auth';
 
 const LANGUAGE_KEY = 'onboarding-language';
 const LANGUAGE_FILE = `${FileSystem.documentDirectory}${LANGUAGE_KEY}.txt`;
@@ -32,6 +33,8 @@ type OnboardingState = {
   hydrate: () => Promise<void>;
   notificationsSkipped: boolean;
   permissionSeen: boolean;
+  signedIn: boolean;
+  setSignedIn: (signedIn: boolean) => void;
   setLanguage: (language: 'en' | 'ar') => Promise<void>;
   skipNotifications: () => void;
   setPermissionSeen: () => Promise<void>;
@@ -42,9 +45,10 @@ export const useOnboardingStore = create<OnboardingState>((set) => ({
   hydrated: false,
   hydrate: async () => {
     try {
-      const [languageInfo, permissionInfo] = await Promise.all([
+      const [languageInfo, permissionInfo, signedIn] = await Promise.all([
         FileSystem.getInfoAsync(LANGUAGE_FILE),
         FileSystem.getInfoAsync(PERMISSION_FILE),
+        hasStoredSession(),
       ]);
       const language = languageInfo.exists
         ? await FileSystem.readAsStringAsync(LANGUAGE_FILE)
@@ -57,6 +61,7 @@ export const useOnboardingStore = create<OnboardingState>((set) => ({
       set({
         language: selectedLanguage,
         permissionSeen: permissionSeen === 'true',
+        signedIn,
         hydrated: true,
       });
     } catch {
@@ -65,6 +70,8 @@ export const useOnboardingStore = create<OnboardingState>((set) => ({
   },
   notificationsSkipped: false,
   permissionSeen: false,
+  signedIn: false,
+  setSignedIn: (signedIn) => set({ signedIn }),
   setLanguage: async (language) => {
     await FileSystem.writeAsStringAsync(LANGUAGE_FILE, language);
     setAppLanguage(language);
@@ -78,7 +85,5 @@ export const useOnboardingStore = create<OnboardingState>((set) => ({
 }));
 
 export function useAppLanguage() {
-  const language = useOnboardingStore((state) => state.language) ?? 'ar';
-  setAppLanguage(language);
-  return language;
+  return useOnboardingStore((state) => state.language) ?? 'ar';
 }

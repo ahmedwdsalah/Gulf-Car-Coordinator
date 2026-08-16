@@ -13,9 +13,13 @@ export default function LanguageScreen() {
   const selectLanguage = async (language: 'en' | 'ar') => {
     await setLanguage(language);
     setSelectedLanguage(language);
+    if (language === 'ar') {
+      router.replace('/permission');
+      return;
+    }
     Alert.alert(
       i18n.t('restartApp'),
-      i18n.t(language === 'ar' ? 'restartForArabic' : 'restartForEnglish'),
+      i18n.t('restartForEnglish'),
       [{ text: i18n.t('ok'), onPress: () => void restartWithLanguage(language).then((reloaded) => { if (!reloaded) router.replace('/permission'); }) }],
       { cancelable: false },
     );
