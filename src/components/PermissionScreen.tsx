@@ -1,6 +1,6 @@
 import { I18nManager, Image, Pressable, Text, View } from 'react-native';
 
-import { registerForPushNotificationsAsync } from '../lib/notifications';
+import { requestNotificationPermissionAsync } from '../lib/notifications';
 import { useOnboardingStore } from '../lib/onboarding';
 import { i18n } from '../lib/i18n';
 
@@ -14,7 +14,7 @@ export default function PermissionScreen({ onDone }: Props) {
   const isArabic = language === 'ar' || I18nManager.isRTL;
 
   const handleEnable = async () => {
-    await registerForPushNotificationsAsync();
+    await requestNotificationPermissionAsync();
     await onDone();
   };
 

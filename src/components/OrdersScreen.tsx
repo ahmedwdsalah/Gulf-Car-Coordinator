@@ -3,7 +3,8 @@ import { ActivityIndicator, FlatList, Linking, Pressable, ScrollView, StyleSheet
 import { LinearGradient } from 'expo-linear-gradient';
 import { MapAlt, ClipboardText, Clock, Location, TickCircle, PlayCircle, CloseCircle, Clipboard, Archive } from 'reicon-react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { localizeOrder, MODES, ORDERS, type Mode, type Order } from '../lib/orders';
+import { MODES, type Mode, type Order } from '../lib/orders';
+import { useOrdersQuery } from '../lib/auth';
 import { i18n } from '../lib/i18n';
 import { useAppLanguage } from '../lib/onboarding';
 
@@ -12,20 +13,9 @@ const modeKey = (mode: Mode) => mode === 'In progress' ? 'inProgress' : mode.toL
 export default function OrdersScreen() {
   const language = useAppLanguage();
   const [mode, setMode] = React.useState<Mode>('Assigned');
-  const [visibleCount, setVisibleCount] = React.useState(5);
-  const [loadingMore, setLoadingMore] = React.useState(false);
-  const orders = ORDERS[mode].map((order) => localizeOrder(order, language));
-
-  React.useEffect(() => setVisibleCount(5), [mode]);
-
-  const loadMore = () => {
-    if (loadingMore || visibleCount >= orders.length) return;
-    setLoadingMore(true);
-    setTimeout(() => {
-      setVisibleCount((count) => Math.min(count + 5, orders.length));
-      setLoadingMore(false);
-    }, 700);
-  };
+  const requests = useOrdersQuery(language === 'ar' ? 'ar' : 'en', mode);
+  const orders = requests.data ?? [];
+  const renderOrder = React.useCallback(({ item }: { item: Order }) => <OrderCard {...item} mode={mode} />, [mode]);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -41,12 +31,12 @@ export default function OrdersScreen() {
         <LinearGradient pointerEvents="none" colors={language === 'ar' ? ['rgba(26,22,18,0)', '#1A1612'] : ['#1A1612', 'rgba(26,22,18,0)']} start={{ x: 0, y: 0.5 }} end={{ x: 1, y: 0.5 }} style={[styles.modeEdgeFade, styles.modeEdgeFadeLeft]} />
         <LinearGradient pointerEvents="none" colors={language === 'ar' ? ['#1A1612', 'rgba(26,22,18,0)'] : ['rgba(26,22,18,0)', '#1A1612']} start={{ x: 0, y: 0.5 }} end={{ x: 1, y: 0.5 }} style={[styles.modeEdgeFade, styles.modeEdgeFadeRight]} />
       </View>
-      {orders.length ? <View style={styles.listArea}><FlatList data={orders.slice(0, visibleCount)} renderItem={({ item }) => <OrderCard {...item} mode={mode} />} keyExtractor={(item) => item.name} showsVerticalScrollIndicator={false} onEndReached={loadMore} onEndReachedThreshold={0.3} ListFooterComponent={loadingMore ? <View style={styles.loader}><ActivityIndicator color="#C89A63" /></View> : null} contentContainerStyle={styles.list} style={styles.listViewport} /><LinearGradient pointerEvents="none" colors={['rgba(26,22,18,0)', '#1A1612']} start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 1 }} style={styles.listBottomFade} /></View> : <View style={styles.empty}><ClipboardText size={34} color="#A99E92" weight="Outline" /><Text style={styles.emptyTitle}>{i18n.t('noModeOrders', { mode: i18n.t(modeKey(mode)) })}</Text><Text style={styles.emptyText}>{i18n.t('modeRidesAppear', { mode: i18n.t(modeKey(mode)) })}</Text></View>}
+      {requests.isPending ? <View style={styles.empty}><ActivityIndicator size="large" color="#C89A63" /></View> : orders.length ? <View style={styles.listArea}><FlatList data={orders} renderItem={renderOrder} keyExtractor={(item) => String(item.id)} showsVerticalScrollIndicator={false} contentContainerStyle={styles.list} style={styles.listViewport} /><LinearGradient pointerEvents="none" colors={['rgba(26,22,18,0)', '#1A1612']} start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 1 }} style={styles.listBottomFade} /></View> : <View style={styles.empty}><ClipboardText size={52} color="#A99E92" weight="Outline" /><Text style={styles.emptyTitle}>{i18n.t('noModeOrders', { mode: i18n.t(modeKey(mode)) })}</Text></View>}
     </SafeAreaView>
   );
 }
 
-function OrderCard({ name, time, from, to, fromCoordinate, toCoordinate, mode }: Order & { mode: Mode }) {
+const OrderCard = React.memo(function OrderCard({ name, time, from, to, fromCoordinate, toCoordinate, mode }: Order & { mode: Mode }) {
   const StatusIcon = mode === 'All' ? Clipboard : mode === 'Assigned' ? Archive : mode === 'In progress' ? PlayCircle : mode === 'Completed' ? TickCircle : CloseCircle;
   const statusColor = mode === 'All' ? '#C89A63' : mode === 'Assigned' ? '#D99A4A' : mode === 'In progress' ? '#5BB6D8' : mode === 'Completed' ? '#67C587' : '#D86D6D';
   const openRoute = () => Linking.openURL(`https://www.google.com/maps/dir/?api=1&origin=${fromCoordinate.latitude},${fromCoordinate.longitude}&destination=${toCoordinate.latitude},${toCoordinate.longitude}&travelmode=driving`);
@@ -72,12 +62,12 @@ function OrderCard({ name, time, from, to, fromCoordinate, toCoordinate, mode }:
       <View style={styles.route}>
         <View style={styles.routeStops}>
           <View style={styles.stopRow}>
-            <View style={styles.stopIcon}><View style={styles.originDot} /></View>
+            <View style={styles.stopIcon}><RouteBadge type="from" /></View>
             <Text style={styles.origin} numberOfLines={1}>{from}</Text>
           </View>
           <View style={styles.connector} />
           <View style={styles.stopRow}>
-            <View style={styles.stopIcon}><Location size={18} color="#C89A63" weight="Outline" /></View>
+            <View style={styles.stopIcon}><RouteBadge type="to" /></View>
             <Text style={styles.destination} numberOfLines={1}>{to}</Text>
           </View>
         </View>
@@ -85,6 +75,14 @@ function OrderCard({ name, time, from, to, fromCoordinate, toCoordinate, mode }:
           <MapAlt size={19} color="#1A1612" weight="Outline" />
         </Pressable>
       </View>
+    </View>
+  );
+});
+
+function RouteBadge({ type }: { type: 'from' | 'to' }) {
+  return (
+    <View style={[styles.routeBadge, type === 'to' ? styles.routeBadgeTo : styles.routeBadgeFrom]}>
+      <View style={type === 'to' ? styles.routeBadgeDestination : styles.routeBadgeOrigin} />
     </View>
   );
 }
@@ -96,8 +94,8 @@ const styles = StyleSheet.create({
   modeEdgeFade: { position: 'absolute', top: 0, bottom: 0, width: 40 },
   modeEdgeFadeLeft: { left: 0 },
   modeEdgeFadeRight: { right: 0 },
-  segmented: { gap: 8, paddingHorizontal: 12, alignItems: 'center' },
-  segmentedArabic: { paddingLeft: 96 },
+  segmented: { gap: 8, paddingHorizontal: 22, alignItems: 'center' },
+  segmentedArabic: { paddingLeft: 20 },
   segment: { minHeight: 34, paddingHorizontal: 14, alignItems: 'center', justifyContent: 'center', borderRadius: 17, backgroundColor: '#2A241D' },
   segmentActive: { backgroundColor: '#C89A63' },
   segmentText: { color: '#A99E92', fontSize: 13, fontWeight: '700' },
@@ -121,12 +119,16 @@ const styles = StyleSheet.create({
   routeStops: { flex: 1, gap: 20 },
   stopRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   stopIcon: { width: 18, alignItems: 'center' },
-  originDot: { width: 8, height: 8, borderRadius: 4, borderWidth: 2, borderColor: '#8C8175' },
+  routeBadge: { width: 20, height: 20, borderRadius: 10, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: '#F7F1E9' },
+  routeBadgeFrom: { backgroundColor: '#1A1612' },
+  routeBadgeTo: { backgroundColor: '#C89A63' },
+  routeBadgeOrigin: { width: 7, height: 7, borderRadius: 4, backgroundColor: '#8C8175' },
+  routeBadgeDestination: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#1A1612', borderWidth: 2, borderColor: '#F7F1E9' },
   connector: { position: 'absolute', left: 8.5, top: 17, width: 1, height: 28, backgroundColor: '#A7B5B8' },
   origin: { flex: 1, color: '#A99E92', fontSize: 14, lineHeight: 19, textAlign: 'left' },
   destination: { flex: 1, color: '#E8DED2', fontSize: 15, lineHeight: 20, fontWeight: '700', textAlign: 'left' },
   mapButton: { width: 38, height: 38, borderRadius: 19, backgroundColor: '#C89A63', alignItems: 'center', justifyContent: 'center' },
-  empty: { alignItems: 'center', justifyContent: 'center', paddingTop: 100 },
-  emptyTitle: { color: '#173947', fontSize: 18, fontWeight: '700', marginTop: 14 },
+  empty: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 0 },
+  emptyTitle: { color: '#FFFFFF', fontSize: 22, fontWeight: '800', marginTop: 18, textAlign: 'center' },
   emptyText: { color: '#698087', fontSize: 14, marginTop: 5 },
 });

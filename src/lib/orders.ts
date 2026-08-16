@@ -4,6 +4,9 @@ export type Coordinate = {
 };
 
 export type Order = {
+  id?: number;
+  version?: number;
+  status?: 'assigned' | 'in_progress' | 'completed' | 'cancelled';
   name: string;
   nameAr?: string;
   time: string;
@@ -14,6 +17,35 @@ export type Order = {
   fromCoordinate: Coordinate;
   toCoordinate: Coordinate;
 };
+
+export type MovementRequest = {
+  id: number;
+  request_number: string;
+  scheduled_at: string | null;
+  pickup: { label: string; lat: number; lng: number };
+  dropoff: { label: string; lat: number; lng: number };
+  passenger_names: string;
+  vehicle_label: string;
+  notes: string | null;
+  status: 'assigned' | 'in_progress' | 'completed' | 'cancelled';
+  version: number;
+  started_at: string | null;
+  completed_at: string | null;
+  updated_at: string;
+};
+
+const movementStatuses = new Set<MovementRequest['status']>(['assigned', 'in_progress', 'completed', 'cancelled']);
+
+export function isMovementRequest(value: unknown): value is MovementRequest {
+  if (!value || typeof value !== 'object') return false;
+  const request = value as Record<string, unknown>;
+  const validPoint = (point: unknown) => {
+    if (!point || typeof point !== 'object') return false;
+    const candidate = point as Record<string, unknown>;
+    return typeof candidate.label === 'string' && typeof candidate.lat === 'number' && Number.isFinite(candidate.lat) && typeof candidate.lng === 'number' && Number.isFinite(candidate.lng);
+  };
+  return Number.isInteger(request.id) && Number.isInteger(request.version) && typeof request.request_number === 'string' && typeof request.passenger_names === 'string' && typeof request.vehicle_label === 'string' && (request.notes === null || typeof request.notes === 'string') && (request.scheduled_at === null || typeof request.scheduled_at === 'string') && (request.started_at === null || typeof request.started_at === 'string') && (request.completed_at === null || typeof request.completed_at === 'string') && typeof request.updated_at === 'string' && typeof request.status === 'string' && movementStatuses.has(request.status as MovementRequest['status']) && validPoint(request.pickup) && validPoint(request.dropoff);
+}
 
 const atlanta = {
   howellMill: { latitude: 33.8107, longitude: -84.4307 },
@@ -44,7 +76,7 @@ const atlanta = {
 };
 
 export const ASSIGNED: Order[] = [
-  { name: 'ahmed Smith', nameAr: 'أليكس سميث', time: '18:00', from: '1994 Howell Mill Rd', fromAr: 'طريق هاول ميل 1994', to: 'ahmed Smith', toAr: 'أليكس سميث', fromCoordinate: atlanta.howellMill, toCoordinate: atlanta.downtown },
+  { name: 'ahmed Smith', nameAr: 'أليكس سميث', time: '18:00', from: 'Girne American University, Karaoğlanoğlu', fromAr: 'جامعة جيرنه الأمريكية، كارا أوغلان أوغلو', to: 'Kyrenia Harbour, Girne', toAr: 'ميناء كيرينيا، جيرنه', fromCoordinate: { latitude: 35.3487, longitude: 33.2924 }, toCoordinate: { latitude: 35.3417, longitude: 33.3192 } },
   { name: 'Sarah Johnson', nameAr: 'سارة جونسون', time: '20:30', from: '2400 Peachtree Rd', fromAr: 'طريق بيتشتري 2400', to: 'Sarah Johnson', toAr: 'سارة جونسون', fromCoordinate: atlanta.peachtree, toCoordinate: atlanta.buckhead },
   { name: 'Michael Brown', nameAr: 'مايكل براون', time: '21:15', from: 'Lenox Square', fromAr: 'ساحة لينوكس', to: 'Buckhead Village', toAr: 'قرية باكهيد', fromCoordinate: atlanta.lenox, toCoordinate: atlanta.buckhead },
   { name: 'Emma Wilson', nameAr: 'إيما ويلسون', time: '21:45', from: 'Piedmont Park', fromAr: 'حديقة بيدمونت', to: 'Midtown Atlanta', toAr: 'وسط أتلانتا', fromCoordinate: atlanta.piedmont, toCoordinate: atlanta.midtown },

@@ -1,21 +1,17 @@
 import React from 'react';
-import { Linking, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
-import MapView, { PROVIDER_GOOGLE } from 'react-native-maps';
+import { ActivityIndicator, Linking, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import Constants from 'expo-constants';
+import MapView, { Marker, PROVIDER_GOOGLE, type UserLocationChangeEvent } from 'react-native-maps';
+import MapViewDirections from 'react-native-maps-directions';
 import * as ExpoLocation from 'expo-location';
 import * as Haptics from 'expo-haptics';
-import { Archive, Arrow, Bell, Clock, Location, MapAlt, Power, WifiOff } from 'reicon-react-native';
+import { Archive, Arrow, Bell, Clock, Location, MapAlt, Power, TickCircle, WifiOff } from 'reicon-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ASSIGNED, localizeOrder, type Order } from '../lib/orders';
+import { type Order } from '../lib/orders';
+import { useMovementRequestMutations, useMovementRequestsQuery } from '../lib/auth';
 import { i18n } from '../lib/i18n';
 import { useAppLanguage } from '../lib/onboarding';
-
-const REGION = {
-  latitude: 52,
-  longitude: -105,
-  latitudeDelta: 45,
-  longitudeDelta: 70,
-};
 
 const MAP_STYLE = [
   { elementType: 'geometry', stylers: [{ color: '#eaf2ee' }] },
@@ -34,22 +30,68 @@ export default function HomeScreen() {
   const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const mapRef = React.useRef<MapView>(null);
+  const nativeLocationCentered = React.useRef(false);
+  const [locationRegion, setLocationRegion] = React.useState<{ latitude: number; longitude: number; latitudeDelta: number; longitudeDelta: number } | null>(null);
   const [isOnline, setIsOnline] = React.useState(false);
-  const assigned = ASSIGNED.map((order) => localizeOrder(order, language));
+  const [mockStatus, setMockStatus] = React.useState<'assigned' | 'in_progress' | 'completed'>('assigned');
+  const requests = useMovementRequestsQuery('active');
+  const transitions = useMovementRequestMutations();
+  const transitionPending = transitions.start.isPending || transitions.complete.isPending;
+  const assigned = React.useMemo(() => (requests.data ?? []).map((request) => ({
+    id: request.id,
+    version: request.version,
+    status: request.status,
+    name: request.passenger_names,
+    time: request.scheduled_at ? new Date(request.scheduled_at).toLocaleTimeString(language === 'ar' ? 'ar' : 'en', { hour: '2-digit', minute: '2-digit', hour12: false }) : '—',
+    from: request.pickup.label,
+    to: request.dropoff.label,
+    fromCoordinate: { latitude: request.pickup.lat, longitude: request.pickup.lng },
+    toCoordinate: { latitude: request.dropoff.lat, longitude: request.dropoff.lng },
+  })), [language, requests.data]);
+  const showMockRequest = __DEV__ && assigned.length === 0 && mockStatus !== 'completed';
+  const displayedAssigned = assigned.length ? assigned : showMockRequest ? [MOCK_HOME_ORDER] : [];
+  const firstRoute = displayedAssigned[0];
+  const googleMapsApiKey = Constants.expoConfig?.extra?.googleMapsApiKey;
+  const todayLabel = new Intl.DateTimeFormat(language === 'ar' ? 'ar' : 'en-US', { weekday: 'long', day: 'numeric', month: 'long' }).format(new Date());
 
-  const showCurrentLocation = async () => {
+  const showCurrentLocation = React.useCallback(async () => {
     const { status } = await ExpoLocation.requestForegroundPermissionsAsync();
     if (status !== ExpoLocation.PermissionStatus.GRANTED) return;
-    const position = await ExpoLocation.getLastKnownPositionAsync();
+    const position = await ExpoLocation.getCurrentPositionAsync({ accuracy: ExpoLocation.Accuracy.Balanced })
+      .catch(() => ExpoLocation.getLastKnownPositionAsync());
     if (!position) return;
-    mapRef.current?.animateCamera({ center: position.coords, zoom: 15 }, { duration: 500 });
-  };
+    const region = { latitude: position.coords.latitude, longitude: position.coords.longitude, latitudeDelta: 0.02, longitudeDelta: 0.02 };
+    setLocationRegion(region);
+    mapRef.current?.animateCamera({ center: region, zoom: 18 }, { duration: 500 });
+  }, []);
+  const centerOnNativeLocation = React.useCallback((event: UserLocationChangeEvent) => {
+    if (firstRoute) return;
+    if (nativeLocationCentered.current) return;
+    if (!event.nativeEvent.coordinate) return;
+    nativeLocationCentered.current = true;
+    const { latitude, longitude } = event.nativeEvent.coordinate;
+    const region = { latitude, longitude, latitudeDelta: 0.02, longitudeDelta: 0.02 };
+    setLocationRegion(region);
+    mapRef.current?.animateCamera({ center: region, zoom: 18 }, { duration: 500 });
+  }, [firstRoute]);
+  const focusRoute = React.useCallback((order: Order) => {
+    mapRef.current?.fitToCoordinates([order.fromCoordinate, order.toCoordinate], {
+      edgePadding: { top: 80, right: 48, bottom: 180, left: 48 },
+      animated: true,
+    });
+  }, []);
+  const fitRoute = React.useCallback((coordinates: { latitude: number; longitude: number }[]) => {
+    mapRef.current?.fitToCoordinates(coordinates, { edgePadding: { top: 80, right: 48, bottom: 180, left: 48 }, animated: true });
+  }, []);
+  const handleDirectionsReady = React.useCallback(({ coordinates }: { coordinates: { latitude: number; longitude: number }[] }) => {
+    fitRoute(coordinates);
+  }, [fitRoute]);
 
   return (
     <View style={styles.container}>
       <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
         <View style={styles.dateRow}>
-          <Text style={styles.date}>{i18n.t('homeDate')}</Text>
+          <Text style={styles.date}>{todayLabel}</Text>
           <View style={styles.headerActions}>
             <Pressable hitSlop={12} onPress={() => void showCurrentLocation()}>
               <Location size={25} color="#FFFFFF" weight="Outline" />
@@ -67,16 +109,48 @@ export default function HomeScreen() {
         <View style={StyleSheet.absoluteFill}>
           <MapView
             ref={mapRef}
+            onUserLocationChange={centerOnNativeLocation}
             provider={PROVIDER_GOOGLE}
             style={StyleSheet.absoluteFill}
-            initialRegion={REGION}
+            {...(locationRegion ? { initialRegion: locationRegion } : {})}
             customMapStyle={MAP_STYLE}
             rotateEnabled={false}
             pitchEnabled={false}
             toolbarEnabled={false}
             showsUserLocation
             showsMyLocationButton={false}
-          />
+            mapType="satellite"
+          >
+            {googleMapsApiKey && firstRoute ? <MapViewDirections
+              origin={firstRoute.fromCoordinate}
+              destination={firstRoute.toCoordinate}
+              apikey={googleMapsApiKey}
+              mode="DRIVING"
+              language={language}
+              precision="low"
+              strokeWidth={5}
+              strokeColor="#C89A63"
+              onReady={handleDirectionsReady}
+            /> : null}
+            {firstRoute ? <Marker
+              identifier="route-origin"
+              coordinate={firstRoute.fromCoordinate}
+              title={firstRoute.from}
+              description={i18n.t('from')}
+              anchor={{ x: 0.5, y: 0.5 }}
+            >
+              <RouteBadge type="from" />
+            </Marker> : null}
+            {firstRoute ? <Marker
+              identifier="route-destination"
+              coordinate={firstRoute.toCoordinate}
+              title={firstRoute.to}
+              description={i18n.t('to')}
+              anchor={{ x: 0.5, y: 0.5 }}
+            >
+              <RouteBadge type="to" />
+            </Marker> : null}
+          </MapView>
           <LinearGradient
             pointerEvents="none"
             colors={[
@@ -132,9 +206,7 @@ export default function HomeScreen() {
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false} directionalLockEnabled contentContainerStyle={styles.cards} style={styles.cardsViewport}>
         <View style={styles.cardsRow}>
-          <VisitCard width={width - 68} {...assigned[0]} />
-          <VisitCard width={width - 68} {...assigned[1]} />
-          <EmptyRideCard width={width - 68} />
+          {assigned.length ? <>{assigned.map((order, index) => <VisitCard key={`${order.id ?? order.name}-${index}`} width={width - 68} {...order} actionPending={transitionPending} onStatusChange={(nextStatus) => { if (!order.id || order.version === undefined) return; const mutation = nextStatus === 'in_progress' ? transitions.start : transitions.complete; mutation.mutate({ id: order.id, expectedVersion: order.version }, { onSuccess: () => { if (nextStatus === 'completed') void showCurrentLocation(); } }); }} onPress={index === 0 ? () => focusRoute(order) : undefined} />)}<EmptyRideCard width={width - 68} /></> : displayedAssigned.length ? <><VisitCard width={width - 68} {...displayedAssigned[0]} status={mockStatus} onStatusChange={(nextStatus) => { setMockStatus(nextStatus); if (nextStatus === 'completed') void showCurrentLocation(); }} onPress={() => focusRoute(displayedAssigned[0])} /><EmptyRideCard width={width - 68} /></> : <EmptyRideCard width={width - 68} />}
         </View>
       </ScrollView>
       <View style={styles.weekHeader}>
@@ -160,19 +232,21 @@ export default function HomeScreen() {
   );
 }
 
-function VisitCard({ width, name, time, from, to, fromCoordinate, toCoordinate }: Order & { width: number }) {
+function VisitCard({ width, name, time, from, to, fromCoordinate, toCoordinate, status = 'assigned', actionPending = false, onStatusChange, onPress }: Order & { width: number; status?: 'assigned' | 'in_progress' | 'completed' | 'cancelled'; actionPending?: boolean; onStatusChange?: (status: 'assigned' | 'in_progress' | 'completed') => void; onPress?: () => void }) {
+  const completed = status === 'completed';
+  const statusColor = completed ? '#67C587' : '#D99A4A';
   const openRoute = () => Linking.openURL(`https://www.google.com/maps/dir/?api=1&origin=${fromCoordinate.latitude},${fromCoordinate.longitude}&destination=${toCoordinate.latitude},${toCoordinate.longitude}&travelmode=driving`);
 
   return (
-    <View style={[styles.visitCard, { width }]}>
+    <Pressable onPress={onPress} style={[styles.visitCard, { width }]}>
       <View pointerEvents="none" style={styles.cardInnerBlackStroke} />
       <View pointerEvents="none" style={styles.cardInnerWhiteStroke} />
       <View style={styles.visitHeader}>
         <View style={styles.visitNameGroup}>
           <Text style={styles.visitName} numberOfLines={1}>{name}</Text>
           <View style={styles.visitStatusRow}>
-            <Archive size={14} color="#D99A4A" weight="Outline" />
-            <Text style={styles.visitStatus}>{i18n.t('assigned')}</Text>
+            {completed ? <TickCircle size={14} color={statusColor} weight="Outline" /> : <Archive size={14} color={statusColor} weight="Outline" />}
+            <Text style={[styles.visitStatus, { color: statusColor }]}>{i18n.t(status === 'in_progress' ? 'inProgress' : status)}</Text>
           </View>
         </View>
         <View style={styles.visitTimeRow}>
@@ -183,12 +257,12 @@ function VisitCard({ width, name, time, from, to, fromCoordinate, toCoordinate }
       <View style={styles.route}>
         <View style={styles.routeStops}>
           <View style={styles.routeStopRow}>
-            <View style={styles.routeStopIcon}><View style={styles.routeOriginDot} /></View>
+            <View style={styles.routeStopIcon}><RouteBadge type="from" /></View>
             <Text style={styles.routeOrigin} numberOfLines={1}>{from}</Text>
           </View>
           <View style={styles.routeConnector} />
           <View style={styles.routeStopRow}>
-            <View style={styles.routeStopIcon}><Location size={18} color="#C89A63" weight="Outline" /></View>
+            <View style={styles.routeStopIcon}><RouteBadge type="to" /></View>
             <Text style={styles.routeDestination} numberOfLines={1}>{to}</Text>
           </View>
         </View>
@@ -196,12 +270,39 @@ function VisitCard({ width, name, time, from, to, fromCoordinate, toCoordinate }
           <MapAlt size={19} color="#1A1612" weight="Outline" />
         </Pressable>
       </View>
+      {onStatusChange ? <View style={styles.testActions}>
+        {status === 'assigned' ? <Pressable disabled={actionPending} style={styles.testAction} onPress={() => { onStatusChange('in_progress'); void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy); }}>{actionPending ? <ActivityIndicator color="#1A1612" /> : <Text style={styles.testActionText}>{i18n.t('start')}</Text>}</Pressable> : null}
+        {status === 'in_progress' ? <Pressable disabled={actionPending} style={styles.testAction} onPress={() => { onStatusChange('completed'); void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy); }}>{actionPending ? <ActivityIndicator color="#1A1612" /> : <Text style={styles.testActionText}>{i18n.t('complete')}</Text>}</Pressable> : null}
+        {completed ? <Pressable disabled style={[styles.testAction, styles.testActionCompleted]}><TickCircle size={15} color="#FFFFFF" weight="Outline" /><Text style={styles.testActionText}>{i18n.t('completed')}</Text></Pressable> : null}
+      </View> : null}
+    </Pressable>
+  );
+}
+
+const MOCK_HOME_ORDER: Order = {
+  name: 'Mock passenger',
+  time: '18:00',
+  from: 'Girne American University',
+  to: 'Kyrenia Harbour',
+  fromCoordinate: { latitude: 35.3487, longitude: 33.2924 },
+  toCoordinate: { latitude: 35.3417, longitude: 33.3192 },
+};
+
+function RouteBadge({ type }: { type: 'from' | 'to' }) {
+  return (
+    <View style={[styles.routeBadge, type === 'to' ? styles.routeBadgeTo : styles.routeBadgeFrom]}>
+      <View style={type === 'to' ? styles.routeBadgeDestination : styles.routeBadgeOrigin} />
     </View>
   );
 }
 
 function EmptyRideCard({ width }: { width: number }) {
-  return <View style={[styles.emptyRideCard, { width }]}><Text style={styles.emptyRideText}>{i18n.t('noScheduledRides')}</Text></View>;
+  return <View style={[styles.emptyRideCard, { width }]}>
+    <View pointerEvents="none" style={styles.cardInnerBlackStroke} />
+    <View pointerEvents="none" style={styles.cardInnerWhiteStroke} />
+    <Archive size={28} color="#8C8175" weight="Outline" />
+    <Text style={styles.emptyRideText}>{i18n.t('noScheduledRides')}</Text>
+  </View>;
 }
 
 function NotificationRow({ title, message, time }: { title: string; message: string; time: string }) {
@@ -232,7 +333,7 @@ const styles = StyleSheet.create({
   onlineButtonActive: { width: 48, paddingHorizontal: 0, backgroundColor: '#32882A', borderColor: '#32882A' },
   onlineButtonText: { color: '#55727A', fontSize: 16, fontWeight: '800', textAlign: 'left' },
   onlineButtonTextActive: { color: '#FFFFFF' },
-  cardsViewport: { height: 162, marginTop: -64, zIndex: 3, elevation: 3 },
+  cardsViewport: { height: 190, marginTop: -64, zIndex: 3, elevation: 3 },
   cards: { gap: 10, paddingStart: 16, paddingEnd: 48 },
   cardsRow: { flexDirection: 'row', gap: 10 },
   visitCard: { minHeight: 150, borderRadius: 16, backgroundColor: '#211C16', paddingHorizontal: 16, paddingVertical: 15, shadowColor: '#000000', shadowOpacity: 0.25, shadowRadius: 8, shadowOffset: { width: 0, height: 3 }, elevation: 3 },
@@ -242,20 +343,28 @@ const styles = StyleSheet.create({
   visitNameGroup: { flex: 1 },
   visitStatusRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 4 },
   visitStatus: { color: '#D99A4A', fontSize: 12, fontWeight: '700', textAlign: 'left' },
+  testAction: { width: '100%', paddingVertical: 9, borderRadius: 16, backgroundColor: '#C89A63', alignItems: 'center' },
+  testActionCompleted: { backgroundColor: '#32882A', flexDirection: 'row', justifyContent: 'center', gap: 7 },
+  testActionText: { color: '#1A1612', fontSize: 12, fontWeight: '800' },
+  testActions: { width: '100%', marginTop: 14 },
   visitTimeRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   visitTime: { color: '#E8DED2', fontSize: 15, lineHeight: 21, fontWeight: '700' },
   route: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 13 },
   routeStops: { flex: 1, gap: 20 },
   routeStopRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   routeStopIcon: { width: 18, alignItems: 'center' },
-  routeOriginDot: { width: 8, height: 8, borderRadius: 4, borderWidth: 2, borderColor: '#8C8175' },
+  routeBadge: { width: 20, height: 20, borderRadius: 10, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: '#F7F1E9' },
+  routeBadgeFrom: { backgroundColor: '#1A1612' },
+  routeBadgeTo: { backgroundColor: '#C89A63' },
+  routeBadgeOrigin: { width: 7, height: 7, borderRadius: 4, backgroundColor: '#8C8175' },
+  routeBadgeDestination: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#1A1612', borderWidth: 2, borderColor: '#F7F1E9' },
   routeConnector: { position: 'absolute', left: 8.5, top: 17, width: 1, height: 28, backgroundColor: '#A7B5B8' },
   routeOrigin: { flex: 1, color: '#A99E92', fontSize: 14, lineHeight: 19, textAlign: 'left' },
   routeDestination: { flex: 1, color: '#E8DED2', fontSize: 15, lineHeight: 20, fontWeight: '700', textAlign: 'left' },
   routeButton: { width: 38, height: 38, borderRadius: 19, backgroundColor: '#C89A63', alignItems: 'center', justifyContent: 'center' },
   visitName: { color: '#F7F1E9', fontSize: 17, lineHeight: 21, fontWeight: '700', textAlign: 'left' },
-  emptyRideCard: { height: 136, borderRadius: 16, backgroundColor: '#F4F3EE', borderWidth: 1, borderColor: '#D9DDD9', alignItems: 'center', justifyContent: 'center' },
-  emptyRideText: { color: '#698087', fontSize: 15, fontWeight: '700' },
+  emptyRideCard: { minHeight: 150, borderRadius: 16, backgroundColor: '#211C16', paddingHorizontal: 16, paddingVertical: 15, borderWidth: 1, borderColor: '#3A3128', alignSelf: 'center', alignItems: 'center', justifyContent: 'center', gap: 12, shadowColor: '#000000', shadowOpacity: 0.25, shadowRadius: 8, shadowOffset: { width: 0, height: 3 }, elevation: 3 },
+  emptyRideText: { color: '#A99E92', fontSize: 15, fontWeight: '700', textAlign: 'center' },
   visitDescription: { color: '#55727A', fontSize: 15, marginTop: 4 },
   weekHeader: { marginHorizontal: 18, marginTop: 22, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   weekTitle: { color: '#F7F1E9', fontSize: 20, fontWeight: '800', textAlign: 'left' },

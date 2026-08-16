@@ -41,7 +41,9 @@
   "to": "To",
   "openRoute": "Open route",
   "viewAll": "View all",
-  "goOnline": "Go online",
+  "goOnline": "Check in",
+  "start": "Start",
+  "complete": "Complete",
   "thisWeek": "This week",
   "viewTimesheet": "View timesheet",
   "totalCompletedTime": "Total completed time",
@@ -56,7 +58,7 @@
   "notificationShiftStarted": "Shift started",
   "notificationShiftStartedMessage": "You are ready to receive rides",
   "homeDate": "Wednesday, December 3rd",
-  "greeting": "Good afternoon, ahmed",
+  "greeting": "Good afternoon, Captain",
   "weekDates": "Nov 30 - Dec 6",
   "noScheduledRides": "No scheduled rides",
   "bookDemo": "Book a demo with a product expert",
@@ -154,4 +156,6 @@
   ,"trackingRadius": "Tracking Radius", "trackingRadiusDescription": "Distance in meters before a stop is detected"
   ,"locationAccuracy": "Location Accuracy", "locationAccuracyDescription": "Balanced location precision"
   ,"trackingInterval": "Tracking Interval", "trackingIntervalDescription": "Update frequency in seconds"
+  ,"unexpectedError": "Something went wrong"
+  ,"tryAgain": "Try again"
 }

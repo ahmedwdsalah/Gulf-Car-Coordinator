@@ -48,7 +48,9 @@
     "to": "إلى",
     "openRoute": "فتح المسار",
     "viewAll": "عرض الكل",
-    "goOnline": "الانتقال إلى متصل",
+    "goOnline": "تسجيل الحضور",
+    "start": "بدء الرحلة",
+    "complete": "إنهاء الرحلة",
     "thisWeek": "هذا الأسبوع",
     "viewTimesheet": "عرض سجل الوقت",
     "totalCompletedTime": "إجمالي الوقت المكتمل",
@@ -63,7 +65,7 @@
     "notificationShiftStarted": "بدأت المناوبة",
     "notificationShiftStartedMessage": "أنت جاهز لاستقبال الرحلات",
     "homeDate": "الأربعاء، 3 ديسمبر",
-    "greeting": "مساء الخير، أليكس",
+    "greeting": "مساء الخير، كابتن",
     "weekDates": "30 نوفمبر - 6 ديسمبر",
     "noScheduledRides": "لا توجد رحلات مجدولة",
     "bookDemo": "احجز عرضاً توضيحياً مع خبير منتجات",
@@ -160,5 +162,7 @@
     ,"trackingRadius": "نطاق التتبع", "trackingRadiusDescription": "المسافة بالأمتار قبل اكتشاف التوقف"
     ,"locationAccuracy": "دقة الموقع", "locationAccuracyDescription": "دقة موقع متوازنة"
     ,"trackingInterval": "الفاصل الزمني للتتبع", "trackingIntervalDescription": "معدل التحديث بالثواني"
+    ,"unexpectedError": "حدث خطأ غير متوقع"
+    ,"tryAgain": "حاول مرة أخرى"
   }
 }

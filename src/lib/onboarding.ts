@@ -27,6 +27,7 @@ export async function restartWithLanguage(language: 'en' | 'ar') {
   return applyLanguageDirection(language);
 }
 
+
 type OnboardingState = {
   language: 'en' | 'ar' | null;
   hydrated: boolean;

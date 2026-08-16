@@ -61,13 +61,13 @@ export default function LoginScreen({ onDone }: Props) {
           <Text style={[styles.label, direction]}>{i18n.t('usernameOrEmail')}</Text>
           <View style={[styles.inputField, styles.inputSpacing]}>
             <Host style={styles.nativeInputHost} ignoreSafeArea="all">
-              <ExpoTextInput onChangeText={setIdentifier} placeholder={i18n.t('usernameOrEmailPlaceholder')} placeholderTextColor="#8C8175" autoCapitalize="none" autoCorrect={false} keyboardType="email-address" textAlign={inputDirection.textAlign} style={styles.nativeInput} textStyle={styles.nativeInputText} />
+              <ExpoTextInput onChangeText={setIdentifier} autoCapitalize="none" autoCorrect={false} keyboardType="email-address" textAlign={inputDirection.textAlign} style={styles.nativeInput} textStyle={styles.nativeInputText} />
             </Host>
           </View>
           <Text style={[styles.label, direction]}>{i18n.t('password')}</Text>
           <View style={styles.passwordField}>
             <Host style={styles.nativePasswordHost} ignoreSafeArea="all">
-              <ExpoTextInput onChangeText={setPassword} placeholder={i18n.t('passwordPlaceholder')} placeholderTextColor="#8C8175" secureTextEntry={secure} autoCapitalize="none" autoCorrect={false} textAlign={inputDirection.textAlign} style={styles.nativePasswordInput} textStyle={styles.nativeInputText} />
+              <ExpoTextInput onChangeText={setPassword} secureTextEntry={secure} autoCapitalize="none" autoCorrect={false} textAlign={inputDirection.textAlign} style={styles.nativePasswordInput} textStyle={styles.nativeInputText} />
             </Host>
             <Pressable onPress={() => setSecure((value) => !value)} hitSlop={10}><Ionicons name={secure ? 'eye-outline' : 'eye-off-outline'} size={22} color="#FFFFFF" /></Pressable>
           </View>

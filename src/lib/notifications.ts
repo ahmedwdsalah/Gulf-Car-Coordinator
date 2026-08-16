@@ -1,9 +1,11 @@
-import Constants from 'expo-constants';
 import * as Notifications from 'expo-notifications';
 import { i18n } from './i18n';
 import { useEffect } from 'react';
 import { Platform } from 'react-native';
 import { router, type Href } from 'expo-router';
+import { useQueryClient } from '@tanstack/react-query';
+
+void Notifications.setAutoServerRegistrationEnabledAsync(false).catch(() => undefined);
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -14,9 +16,7 @@ Notifications.setNotificationHandler({
   }),
 });
 
-export async function registerForPushNotificationsAsync() {
-  let token;
-
+export async function requestNotificationPermissionAsync() {
   if (Platform.OS === 'android') {
     await Notifications.setNotificationChannelAsync('default', {
       name: i18n.t('defaultNotificationChannel'),
@@ -36,23 +36,26 @@ export async function registerForPushNotificationsAsync() {
     return null;
   }
 
-  try {
-    const projectId =
-      Constants?.expoConfig?.extra?.eas?.projectId ?? Constants?.easConfig?.projectId;
-    if (!projectId) {
-      throw new Error('Project ID not found');
-    }
-    token = (await Notifications.getExpoPushTokenAsync({ projectId })).data;
-  } catch (e) {
-    token = `${e}`;
-  }
+  return finalStatus;
+}
 
-  return token;
+export async function registerForPushNotificationsAsync() {
+  const permission = await requestNotificationPermissionAsync();
+  if (!permission) return null;
+
+  try {
+    return (await Notifications.getDevicePushTokenAsync()).data?.toString() ?? null;
+  } catch {
+    return null;
+  }
 }
 
 export function useNotificationObserver() {
+  const queryClient = useQueryClient();
   useEffect(() => {
+    const refreshRequests = () => void queryClient.invalidateQueries({ queryKey: ['movement-requests'] });
     function redirect(notification: Notifications.Notification) {
+      refreshRequests();
       const url = notification.request.content.data?.url;
       if (typeof url === 'string') {
         router.push(url as Href);
@@ -65,12 +68,14 @@ export function useNotificationObserver() {
       Notifications.clearLastNotificationResponse();
     }
 
-    const subscription = Notifications.addNotificationResponseReceivedListener((response) => {
+    const receivedSubscription = Notifications.addNotificationReceivedListener(refreshRequests);
+    const responseSubscription = Notifications.addNotificationResponseReceivedListener((response) => {
       redirect(response.notification);
     });
 
     return () => {
-      subscription.remove();
+      receivedSubscription.remove();
+      responseSubscription.remove();
     };
-  }, []);
+  }, [queryClient]);
 }
