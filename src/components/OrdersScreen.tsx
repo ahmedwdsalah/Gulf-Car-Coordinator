@@ -1,5 +1,6 @@
 import React from 'react';
-import { ActivityIndicator, FlatList, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Linking, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { FlashList } from '@shopify/flash-list';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MapAlt, ClipboardText, Clock, Location, TickCircle, PlayCircle, CloseCircle, Clipboard, Archive } from 'reicon-react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -10,12 +11,31 @@ import { useAppLanguage } from '../lib/onboarding';
 
 const modeKey = (mode: Mode) => mode === 'In progress' ? 'inProgress' : mode.toLowerCase();
 
-export default function OrdersScreen() {
+const OrdersScreen = React.memo(function OrdersScreen() {
   const language = useAppLanguage();
   const [mode, setMode] = React.useState<Mode>('Assigned');
+  const [visibleCount, setVisibleCount] = React.useState(5);
+  const [isLoadingMore, setIsLoadingMore] = React.useState(false);
   const requests = useOrdersQuery(language === 'ar' ? 'ar' : 'en', mode);
   const orders = requests.data ?? [];
+  const visibleOrders = orders.slice(0, visibleCount);
+  const hasMore = visibleOrders.length < orders.length;
   const renderOrder = React.useCallback(({ item }: { item: Order }) => <OrderCard {...item} mode={mode} />, [mode]);
+  const refreshOrders = React.useCallback(() => {
+    void requests.refetch();
+  }, [requests.refetch]);
+  const loadMore = React.useCallback(() => {
+    if (!hasMore || isLoadingMore) return;
+    setIsLoadingMore(true);
+    requestAnimationFrame(() => {
+      setVisibleCount((count) => Math.min(count + 5, orders.length));
+      setIsLoadingMore(false);
+    });
+  }, [hasMore, isLoadingMore, orders.length]);
+
+  React.useEffect(() => {
+    setVisibleCount(5);
+  }, [mode]);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -31,10 +51,12 @@ export default function OrdersScreen() {
         <LinearGradient pointerEvents="none" colors={language === 'ar' ? ['rgba(26,22,18,0)', '#1A1612'] : ['#1A1612', 'rgba(26,22,18,0)']} start={{ x: 0, y: 0.5 }} end={{ x: 1, y: 0.5 }} style={[styles.modeEdgeFade, styles.modeEdgeFadeLeft]} />
         <LinearGradient pointerEvents="none" colors={language === 'ar' ? ['#1A1612', 'rgba(26,22,18,0)'] : ['rgba(26,22,18,0)', '#1A1612']} start={{ x: 0, y: 0.5 }} end={{ x: 1, y: 0.5 }} style={[styles.modeEdgeFade, styles.modeEdgeFadeRight]} />
       </View>
-      {requests.isPending ? <View style={styles.empty}><ActivityIndicator size="large" color="#C89A63" /></View> : orders.length ? <View style={styles.listArea}><FlatList data={orders} renderItem={renderOrder} keyExtractor={(item) => String(item.id)} showsVerticalScrollIndicator={false} contentContainerStyle={styles.list} style={styles.listViewport} /><LinearGradient pointerEvents="none" colors={['rgba(26,22,18,0)', '#1A1612']} start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 1 }} style={styles.listBottomFade} /></View> : <View style={styles.empty}><ClipboardText size={52} color="#A99E92" weight="Outline" /><Text style={styles.emptyTitle}>{i18n.t('noModeOrders', { mode: i18n.t(modeKey(mode)) })}</Text></View>}
+      {requests.isPending ? <View style={styles.empty}><ActivityIndicator size="large" color="#C89A63" /></View> : orders.length ? <View style={styles.listArea}><FlashList data={visibleOrders} renderItem={renderOrder} keyExtractor={(item) => String(item.id)} onEndReached={loadMore} onEndReachedThreshold={0.35} ListFooterComponent={hasMore && isLoadingMore ? <ActivityIndicator style={styles.loader} color="#C89A63" /> : null} maintainVisibleContentPosition={{ disabled: false }} drawDistance={500} showsVerticalScrollIndicator={false} contentContainerStyle={styles.list} style={styles.listViewport} refreshControl={<RefreshControl refreshing={requests.isRefetching} onRefresh={refreshOrders} tintColor="#C89A63" />} /><LinearGradient pointerEvents="none" colors={['rgba(26,22,18,0)', '#1A1612']} start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 1 }} style={styles.listBottomFade} /></View> : <View style={styles.empty}><ClipboardText size={52} color="#A99E92" weight="Outline" /><Text style={styles.emptyTitle}>{i18n.t('noModeOrders', { mode: i18n.t(modeKey(mode)) })}</Text></View>}
     </SafeAreaView>
   );
-}
+});
+
+export default OrdersScreen;
 
 const OrderCard = React.memo(function OrderCard({ name, time, from, to, fromCoordinate, toCoordinate, mode }: Order & { mode: Mode }) {
   const StatusIcon = mode === 'All' ? Clipboard : mode === 'Assigned' ? Archive : mode === 'In progress' ? PlayCircle : mode === 'Completed' ? TickCircle : CloseCircle;

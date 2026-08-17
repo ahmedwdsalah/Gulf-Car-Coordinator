@@ -1,9 +1,8 @@
 import * as Location from 'expo-location';
 import * as FileSystem from 'expo-file-system/legacy';
-import * as SecureStore from 'expo-secure-store';
 import * as TaskManager from 'expo-task-manager';
 import * as Crypto from 'expo-crypto';
-import { normalizeTrackingAccuracy, sendLocation, TRACKING_POLICY_KEY, type LocationPoint, type BootstrapData } from './auth';
+import { normalizeTrackingAccuracy, sendLocation, TRACKING_POLICY_FILE, type LocationPoint, type BootstrapData } from './auth';
 
 export const LOCATION_TASK = 'gulf-car-location';
 const QUEUE_KEY = 'tracking.location_queue';
@@ -29,9 +28,12 @@ async function flushQueue(queue: LocationPoint[]) {
 }
 
 async function getTrackingPolicy(): Promise<BootstrapData['tracking_policy'] | null> {
-  const value = await SecureStore.getItemAsync(TRACKING_POLICY_KEY);
-  if (!value) return null;
-  try { return JSON.parse(value) as BootstrapData['tracking_policy']; } catch { return null; }
+  try {
+    const value = await FileSystem.readAsStringAsync(TRACKING_POLICY_FILE);
+    return JSON.parse(value) as BootstrapData['tracking_policy'];
+  } catch {
+    return null;
+  }
 }
 
 async function pruneQueue(queue: LocationPoint[]) {

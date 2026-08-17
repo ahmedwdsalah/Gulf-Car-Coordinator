@@ -57,7 +57,7 @@ const items = [
 ] as const;
 type AdvancedTracking = { automaticStop: boolean; radius: string | number; accuracy: string | number; interval: string | number };
 
-export default function ProfileScreen() {
+const ProfileScreen = React.memo(function ProfileScreen() {
   const insets = useSafeAreaInsets();
   const scrollY = useSharedValue(0);
   const setLanguage = useOnboardingStore((state) => state.setLanguage);
@@ -88,6 +88,8 @@ export default function ProfileScreen() {
       </ScrollView>
     </View>
   );
-}
+});
+
+export default ProfileScreen;
 
 const styles = StyleSheet.create({ container: { flex: 1, backgroundColor: '#1A1612' }, compactHeader: { position: 'absolute', zIndex: 2, top: 0, left: 0, right: 0, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', paddingHorizontal: 16, paddingBottom: 12, backgroundColor: '#211C16' }, headerSide: { width: 40 }, headerRight: { alignItems: 'flex-end' }, compactTitle: { color: '#F7F1E9', fontSize: 18, fontWeight: '700', textAlign: 'center' }, compactSubtitle: { color: '#A99E92', fontSize: 13, marginTop: 2, textAlign: 'center' }, profileHero: { height: 260, paddingTop: 40, alignItems: 'center', justifyContent: 'center' }, profileAvatar: { width: 148, height: 148 }, profileIntro: { alignItems: 'center', paddingBottom: 28 }, name: { color: '#F7F1E9', fontSize: 26, fontWeight: '700' }, subtitle: { color: '#A99E92', fontSize: 15, marginTop: 4 }, content: { padding: 24, paddingBottom: 40 }, section: { marginBottom: 28 }, sectionTitle: { color: '#F7F1E9', fontSize: 20, fontWeight: '600', marginBottom: 14 }, sectionContent: { backgroundColor: '#211C16', borderRadius: 16, overflow: 'hidden', borderWidth: 1, borderColor: '#3A3128' }, item: { minHeight: 76, paddingHorizontal: 16, paddingVertical: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }, itemLeft: { flex: 1, flexDirection: 'row', alignItems: 'center' }, rtlText: { writingDirection: 'rtl', textAlign: 'left' }, icon: { width: 30, alignItems: 'center' }, itemText: { flex: 1, marginStart: 12 }, title: { color: '#F7F1E9', fontSize: 16, fontWeight: '600' }, description: { color: '#A99E92', fontSize: 13, marginTop: 3 }, nativeControl: { width: 110, height: 40, justifyContent: 'center' }, valueText: { color: '#C89A63', fontSize: 14, fontWeight: '600' }, separator: { height: 1, backgroundColor: '#3A3128', marginStart: 38 } });

@@ -2,9 +2,10 @@ import * as Crypto from 'expo-crypto';
 import Constants from 'expo-constants';
 import * as Device from 'expo-device';
 import * as SecureStore from 'expo-secure-store';
+import * as FileSystem from 'expo-file-system/legacy';
 import { Platform } from 'react-native';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useCallback } from 'react';
+import { useCallback, useEffect } from 'react';
 import { isMovementRequest, type Mode, type MovementRequest, type Order } from './orders';
 
 const HR_API_URL = 'https://hr.gulfcar.com.sa/api/v1/mobile';
@@ -21,6 +22,7 @@ const REFRESH_TOKEN_KEY = 'auth.refresh_token';
 const TRACKING_TOKEN_KEY = 'auth.tracking_token';
 const PROVISIONING_KEY = 'auth.provisioning_profile';
 export const TRACKING_POLICY_KEY = 'auth.tracking_policy';
+export const TRACKING_POLICY_FILE = `${FileSystem.documentDirectory}tracking-policy.json`;
 let refreshInFlight: Promise<string> | null = null;
 let provisioningProfileCache: ProvisioningProfile | null | undefined;
 
@@ -208,7 +210,11 @@ export async function getBootstrap(signal?: AbortSignal) {
   if (!response.ok || !body?.ok || !body.organization || !body.user || !body.tracking_policy) {
     throw new AuthError(body?.code ?? 'REQUEST_FAILED', response.status);
   }
-  await SecureStore.setItemAsync(TRACKING_POLICY_KEY, JSON.stringify(body.tracking_policy));
+  const serializedPolicy = JSON.stringify(body.tracking_policy);
+  await Promise.all([
+    SecureStore.setItemAsync(TRACKING_POLICY_KEY, serializedPolicy),
+    FileSystem.writeAsStringAsync(TRACKING_POLICY_FILE, serializedPolicy).catch(() => undefined),
+  ]);
   return { organization: body.organization, user: body.user, tracking_policy: body.tracking_policy } satisfies BootstrapData;
 }
 
@@ -223,6 +229,47 @@ export async function getMovementRequests(status: 'active' | 'completed' | 'all'
     throw new AuthError(body?.code ?? 'REQUEST_FAILED', response.status);
   }
   return body.requests;
+}
+
+type AttendanceState = { checked_in: boolean };
+
+function parseAttendanceState(body: unknown): AttendanceState | null {
+  if (!body || typeof body !== 'object') return null;
+  const value = body as Record<string, unknown>;
+  if (typeof value.checked_in === 'boolean') return { checked_in: value.checked_in };
+  if (typeof value.is_checked_in === 'boolean') return { checked_in: value.is_checked_in };
+  if (value.state === 'checked_in' || value.status === 'checked_in') return { checked_in: true };
+  if (value.state === 'checked_out' || value.status === 'checked_out') return { checked_in: false };
+  return null;
+}
+
+export async function getAttendanceState(signal?: AbortSignal) {
+  const response = await authenticatedFetch('/attendance/state', { signal });
+  const body = (await response.json().catch(() => null)) as { ok?: boolean; code?: string } | null;
+  const state = parseAttendanceState(body);
+  if (!response.ok || !body?.ok || !state) throw new AuthError(body?.code ?? 'REQUEST_FAILED', response.status);
+  return state;
+}
+
+export async function toggleAttendance() {
+  const response = await authenticatedFetch('/attendance/toggle', { method: 'POST' });
+  const body = (await response.json().catch(() => null)) as { ok?: boolean; code?: string } | null;
+  const state = parseAttendanceState(body);
+  if (!response.ok || !body?.ok || !state) throw new AuthError(body?.code ?? 'REQUEST_FAILED', response.status);
+  return state;
+}
+
+export function useAttendanceStateQuery() {
+  return useQuery({ queryKey: ['attendance', 'state'], queryFn: ({ signal }) => getAttendanceState(signal), staleTime: 30 * 1000 });
+}
+
+export function useAttendanceToggleMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationKey: ['attendance', 'toggle'],
+    mutationFn: toggleAttendance,
+    onSuccess: (state) => { queryClient.setQueryData(['attendance', 'state'], state); },
+  });
 }
 
 export async function registerDevice() {
@@ -319,7 +366,9 @@ async function transitionMovementRequest(action: 'start' | 'complete', id: numbe
 export function useMovementRequestsQuery(status: 'active' | 'completed' | 'all' = 'all') {
   return useQuery({
     queryKey: ['movement-requests', status],
-    queryFn: ({ signal }) => getMovementRequests(status, signal),
+    queryFn: async ({ signal }) => {
+      return getMovementRequests(status, signal);
+    },
     staleTime: 30 * 1000,
   });
 }
@@ -338,7 +387,10 @@ export function useOrdersQuery(language: 'ar' | 'en', mode: Mode) {
   })), [language, mode]);
   return useQuery({
     queryKey: ['movement-requests', 'all'],
-    queryFn: ({ signal }) => getMovementRequests('all', signal),
+    queryFn: async ({ signal }) => {
+      const requests = await getMovementRequests('all', signal);
+      return requests;
+    },
     select,
     staleTime: 30 * 1000,
   });

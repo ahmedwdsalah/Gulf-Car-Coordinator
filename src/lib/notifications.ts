@@ -50,6 +50,17 @@ export async function registerForPushNotificationsAsync() {
   }
 }
 
+export function notifyNewMovementRequest(request: { id: number; passenger_names: string; pickup: { label: string }; dropoff: { label: string } }) {
+  return Notifications.scheduleNotificationAsync({
+    content: {
+      title: i18n.t('notificationRideAssigned'),
+      body: `${request.passenger_names} · ${request.pickup.label} → ${request.dropoff.label}`,
+      data: { type: 'movement-request', requestId: request.id },
+    },
+    trigger: null,
+  });
+}
+
 export function useNotificationObserver() {
   const queryClient = useQueryClient();
   useEffect(() => {
