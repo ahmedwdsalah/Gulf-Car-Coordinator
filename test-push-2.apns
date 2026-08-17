@@ -1,5 +1,5 @@
 {
-  "Simulator Target Bundle": "com.golfcars.gps",
+  "Simulator Target Bundle": "com.gulfcar.client",
   "aps": {
     "alert": {
       "title": "✅ انتهت الرحلة",

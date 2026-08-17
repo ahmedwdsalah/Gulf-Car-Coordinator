@@ -1,8 +1,8 @@
 {
   "expo": {
-    "name": "Driver",
+    "name": "Gulf Car Captain",
     "slug": "gulf-car-coordinator",
-    "version": "1.0.0",
+    "version": "9.8.4",
     "runtimeVersion": {
       "policy": "fingerprint"
     },
@@ -16,7 +16,7 @@
     "userInterfaceStyle": "light",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.golfcars.gps",
+      "bundleIdentifier": "com.gulfcar.client",
       "icon": {
         "light": "./assets/icon-light.png",
         "dark": "./assets/icon-dark.png",
@@ -29,7 +29,7 @@
     },
     "android": {
       "predictiveBackGestureEnabled": false,
-      "package": "com.golfcars.gps",
+      "package": "com.gulfcar.client",
       "icon": "./assets/icon.png",
       "adaptiveIcon": {
         "backgroundColor": "#FFFFFF",
@@ -108,8 +108,8 @@
       [
         "expo-widgets",
         {
-          "bundleIdentifier": "com.golfcars.gps.ExpoWidgetsTarget",
-          "groupIdentifier": "group.com.golfcars.gps",
+          "bundleIdentifier": "com.gulfcar.client.ExpoWidgetsTarget",
+          "groupIdentifier": "group.com.gulfcar.client",
           "enablePushNotifications": true,
           "widgets": [
             {
