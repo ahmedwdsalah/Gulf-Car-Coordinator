@@ -105,28 +105,6 @@
           "enableBackgroundRemoteNotifications": true
         }
       ],
-      [
-        "expo-widgets",
-        {
-          "bundleIdentifier": "com.gulfcar.client.ExpoWidgetsTarget",
-          "groupIdentifier": "group.com.gulfcar.client",
-          "enablePushNotifications": true,
-          "widgets": [
-            {
-              "name": "DriverTracking",
-              "displayName": "Driver Tracking",
-              "description": "Live driver position and trip status",
-              "supportedFamilies": [
-                "accessoryCircular",
-                "accessoryRectangular",
-                "accessoryInline",
-                "systemSmall",
-                "systemMedium"
-              ]
-            }
-          ]
-        }
-      ]
     ],
     "extra": {
       "router": {},

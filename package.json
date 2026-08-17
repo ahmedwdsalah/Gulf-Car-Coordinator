@@ -30,7 +30,6 @@
     "expo-status-bar": "~57.0.1",
     "expo-task-manager": "~57.0.9",
     "expo-updates": "~57.0.13",
-    "expo-widgets": "~57.0.9",
     "i18n-js": "^4.5.3",
     "lottie-react-native": "~7.3.8",
     "react": "19.2.3",
